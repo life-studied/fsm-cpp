@@ -33,6 +33,7 @@ int main()
     m.init_state(m_state::walk);
     m.add_transition(m_state::walk, m_state::jump, [](action_base& act)->bool { return dynamic_cast<StartToJump*>(&act) != nullptr; });
     m.add_transition(m_state::jump, m_state::idle, [&](action_base& act)->bool { return  happy == 0; });
+    m.add_state_out_func(m_state::walk, []() {std::cout << "leave walk\n"; });
     m.run();
 
     

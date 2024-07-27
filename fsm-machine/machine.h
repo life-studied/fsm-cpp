@@ -58,7 +58,12 @@ public:
 							// 状态转移
 							auto temp_state = current_state_;
 							current_state_ = static_cast<State>(atoi(it->first.substr(idx + 1).c_str()));
-							std::cout << "状态转移成功：" << static_cast<int>(temp_state) << "->" << static_cast<int>(current_state_) << '\n';
+							
+							// 调用状态转出函数
+							if (auto it = state_out_functions_.find(temp_state); it != state_out_functions_.end())
+								it->second();
+
+
 						}
 					}
 					
@@ -85,6 +90,10 @@ public:
 		action_queue_.push(act);
 	}
 
+	void add_state_out_func(State s, std::function<void()> f)
+	{
+		state_out_functions_[s] = f;
+	}
 private:
 	std::string connect_state_tostr(State now, State next)
 	{
@@ -110,5 +119,6 @@ private:
 
 	std::queue<std::shared_ptr<action_base>> action_queue_;
 
+	std::map<State, std::function<void()>> state_out_functions_;
 	std::condition_variable cv;
 };
