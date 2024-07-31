@@ -23,7 +23,10 @@
     <ClInclude Include="machine.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="action.h">
+    <ClInclude Include="shared_event_factory.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="state_macro.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

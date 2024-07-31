@@ -1,57 +1,48 @@
 ﻿#include <iostream>
-#include "machine.h"
 #include <chrono>
+#include <string>
+#include <cctype>
 
-enum class m_state
-{
-    idle,   // 0 
-    walk,   // 1 "1-2"
-    run,    // 2
-    jump,   // 3
-    sleep
-};
+#include "machine.h"
+#include "shared_event_factory.h"
+#include "state_macro.h"
 
-class StartToJump : public action_base
-{
-
-};
-
-class StopToIdle : public action_base
-{
-
-};
+CREATE_FSM_STATES(char_state, s_start, s_signed, s_in_number, s_end);
 
 int main()
 {
-    int happy = 0;
-    machine<m_state> m;
-    m.add_state(m_state::walk);
-    m.add_state(m_state::run);
-    m.add_state(m_state::jump);
-    m.add_state(m_state::idle);
-    m.add_state(m_state::sleep);
-    m.init_state(m_state::walk);
-    m.add_transition(m_state::walk, m_state::jump, [](action_base& act)->bool { return dynamic_cast<StartToJump*>(&act) != nullptr; });
-    m.add_transition(m_state::jump, m_state::idle, [&](action_base& act)->bool { return  happy == 0; });
-    m.add_state_out_func(m_state::walk, []() {std::cout << "leave walk\n"; });
+    using namespace fsm;
+
+	long long result = 0;
+	bool nagetive = false; 
+    std::string data{ "1337c0d3" };
+	size_t idx = 0;
+
+    machine<char_state, char> m;
+    m.add_all_states(char_state_array_);
+    m.init_state(char_state::s_start);
+    m.add_transition(char_state::s_start, char_state::s_start, [](char& event)->bool { return event == ' '; });
+    m.add_transition(char_state::s_start, char_state::s_signed, [](char& event)->bool { return event == '+' || event == '-'; });
+    m.add_transition(char_state::s_start, char_state::s_end, [](char& event)->bool { return !std::isdigit(event) && event != ' ' && event != '+' && event != '-'; });
+    m.add_transition(char_state::s_in_number, char_state::s_in_number, [](char& event)->bool { return std::isdigit(event); });
+    m.add_transition(char_state::s_start, char_state::s_in_number, [](char& event)->bool { return std::isdigit(event); });
+    m.add_transition(char_state::s_in_number, char_state::s_end, [](char& event)->bool { return !std::isdigit(event); });
+    m.add_transition(char_state::s_signed, char_state::s_in_number, [](char& event)->bool { return std::isdigit(event); });
+    m.add_transition(char_state::s_signed, char_state::s_end, [](char& event)->bool { return !std::isdigit(event); });
+    m.add_transition(char_state::s_end, char_state::s_end, [](char& event)->bool { return true; });
+
+    m.add_state_action(char_state::s_in_number, [&]() {result = result * 10 + data[idx] - '0'; });
+    m.add_state_action(char_state::s_signed, [&]() { if (data[idx] == '-')nagetive = false; });
+
     m.run();
 
-    
-	/*machine m;
-	m
-		.add_state(m_state::walk)
-		.add_state(m_state::walk)
-		.add_transition()
-		.run();*/
-    
-
-    while (true)
+    while (idx != data.size())
     {
-        m.push_action(dynamic_pointer_cast<action_base>(std::make_shared<StartToJump>()));
-        m.push_action(dynamic_pointer_cast<action_base>(std::make_shared<StopToIdle>()));
-        using namespace std::literals;
-        std::this_thread::sleep_for(1s);
+        m.push_event(shared_event_factory<char>::get_instance(data[idx]));  // shared-event for save memory
+        auto next_state = m.get_next_state();
+        idx++;
     }
 
     m.stop();
+    std::cout << (nagetive ?  -1 : 1) * result;
 }
