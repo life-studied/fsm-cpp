@@ -29,5 +29,11 @@
     <ClInclude Include="state_macro.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="thread_machine.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="nothread_machine.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -248,8 +248,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="machine.h" />
+    <ClInclude Include="nothread_machine.h" />
     <ClInclude Include="shared_event_factory.h" />
     <ClInclude Include="state_macro.h" />
+    <ClInclude Include="thread_machine.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

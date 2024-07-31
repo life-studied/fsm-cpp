@@ -56,78 +56,9 @@ namespace fsm
 			return *this;
 		}
 
-		void run()
-		{
-			is_running_ = true;
-			is_stopped_ = false;
-			t_ = std::thread([&]() {
-				while (is_running_)
-				{
-					std::unique_lock<std::mutex> lock(event_mtx_);
-					if (event_queue_.empty()) event_cv_.wait(lock);
-					auto act_next = event_queue_.front();
-					event_queue_.pop();
-					lock.unlock();
+		virtual void run() = 0;
 
-					// 检查状态转移条件并转移状态
-					for (auto it = state_transition_table_.begin(); it != state_transition_table_.end(); ++it)
-					{
-						if (it->first.first == current_state_)
-						{
-							// 检查条件
-							if (it->second(*act_next))
-							{
-								// 状态转移
-								auto temp_state = current_state_;
-								current_state_ = it->first.second;
-
-								// 调用状态转出函数
-								if (auto it = state_out_actions_.find(temp_state); it != state_out_actions_.end())
-									it->second();
-
-								// 调用状态转入函数
-								if (auto it = state_in_actions_.find(current_state_); it != state_in_actions_.end())
-									it->second();
-
-								break;
-							}
-						}
-
-					}
-
-					// 调用当前状态函数
-					if (auto it = state_actions_.find(current_state_); it != state_actions_.end())
-						it->second();
-
-					// 放入新状态
-					{
-						std::unique_lock lock(state_mtx_);
-						state_queue_.push(current_state_);
-					}
-					state_cv_.notify_one();
-				}
-
-				is_stopped_ = true;
-				is_stopped_.notify_one();
-				});
-
-			t_.detach();
-		}
-
-		void stop()
-		{
-			is_running_ = false;
-			is_stopped_.wait(true);
-		}
-
-		void push_event(std::shared_ptr<Event> act)
-		{
-			{
-				std::unique_lock<std::mutex> lock(event_mtx_);
-				event_queue_.push(act);
-			}
-			event_cv_.notify_one();
-		}
+		virtual void push_event(std::shared_ptr<Event> act) = 0;
 
 		void add_state_out_action(State s, std::function<void()> f)
 		{
@@ -144,37 +75,24 @@ namespace fsm
 			state_actions_[s] = f;
 		}
 
-		State get_next_state()
-		{
-			std::unique_lock lock(state_mtx_);
-			if (state_queue_.empty()) state_cv_.wait(lock);
-
-			auto result = state_queue_.front();
-			state_queue_.pop();
-			return result;
-		}
+		virtual State get_next_state() = 0;
 
 		State get_now_state()
 		{
 			return current_state_;
 		}
 
-	private:
+		void add_update_func(std::function<void()> f)
+		{
+			update_func = f;
+			has_update_func = true;
+		}
+	protected:
 		bool has_state(State s)
 		{
 			return states_.count(s) != 0;
 		}
-	private:
-
-		// for multi-thread
-		std::thread t_;
-		std::mutex event_mtx_;
-		std::mutex state_mtx_;
-		std::atomic<bool> is_running_ = false;
-		std::atomic<bool> is_stopped_ = true;
-		std::condition_variable event_cv_;
-		std::condition_variable state_cv_;
-		
+	protected:
 		// for state transition functions
 		std::map<std::pair<State, State>, std::function<bool(Event& act)>> state_transition_table_;
 		std::map<State, std::function<void()>> state_out_actions_;
@@ -184,6 +102,10 @@ namespace fsm
 		std::unordered_set<State> states_;
 		State current_state_;
 		std::map<State, std::function<void()>> state_actions_;
+
+		// update data at each loop last
+		std::function<void()> update_func;
+		bool has_update_func = false;
 
 		// i/o for push and pop 
 		std::queue<std::shared_ptr<Event>> event_queue_;
